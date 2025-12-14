@@ -1,0 +1,8 @@
+[project]
+name = "csvlogger"
+version = "0.0.1"
+description = "📝 Convenient CSV and terminal logger"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
