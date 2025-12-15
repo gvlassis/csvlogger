@@ -7,9 +7,10 @@ import itertools
 COLORS = [31,32,33,34,35,36] # 31: red, 32: green, 33: yellow, 34: blue, 35: magenta, 36: cyan
 
 class Logger:
-    def __init__(self, *names, path="log.csv", delimiter=",", include=None, min_width=10, track_min=None, track_max=None):
+    def __init__(self, *names, path="log.csv", delimiter=",", include=None, exclude=None, min_width=10, track_min=None, track_max=None):
         path = os.path.abspath(path)
         include = include if include else names
+        exclude = exclude if exclude else []
         track_min = track_min if track_min else []
         track_max = track_max if track_max else []
 
@@ -17,7 +18,7 @@ class Logger:
         self.path = path
         self.dir = os.path.dirname(path)
         self.delimiter = delimiter
-        self.include = include
+        self.include = list(set(include)-set(exclude))
         self.min_width = min_width
         self.track_min = track_min
         self.min = {name:INF for name in track_min}
@@ -28,7 +29,7 @@ class Logger:
         
         included_names = []
         for name in self.names:
-            if name not in include:
+            if name not in self.include:
                 continue
             
             if name in self.track_min:
