@@ -46,7 +46,7 @@ class Logger:
             name = name.rjust(width)
             name = stylize(name)
             included_names.append(name)
-        print(' '.join(included_names))
+        print(' '.join(included_names), flush=True)
         
         os.makedirs(self.dir, exist_ok=True)
         with open(path, "w") as file:
@@ -86,7 +86,7 @@ class Logger:
             val = val.rjust(width)
             val = stylize(val)
             included_vals.append(val)
-        print(' '.join(included_vals))
+        print(' '.join(included_vals), flush=True)
 
         with open(self.path, "a") as file:
             writer = csv.writer(file, delimiter=self.delimiter)
