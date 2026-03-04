@@ -5,9 +5,13 @@ import itertools
 
 # ANSI color codes
 COLORS = [31,32,33,34,35,36] # 31: red, 32: green, 33: yellow, 34: blue, 35: magenta, 36: cyan
+SEPARATOR = "─"*30
 
 class Logger:
-    def __init__(self, *cols, name="log", stdout_on=True, stdout_include=None, stdout_exclude=None, stdout_min_width=10, stdout_track_min=None, stdout_track_max=None, csv_on=True, csv_delimiter=",", wandb_on=False):
+    def __init__(self, *cols, name="log", mode="a",
+                 stdout_flag=True, stdout_include=None, stdout_exclude=None, stdout_min_width=10, stdout_track_min=None, stdout_track_max=None, stdout_init_flag=True, stdout_init_before_log=False, stdout_separator_before_init=False, stdout_separator_after_log=False,
+                 csv_flag=True, csv_delimiter=",",
+                 wandb_flag=False):
 
         stdout_include = stdout_include if stdout_include else cols
         stdout_exclude = stdout_exclude if stdout_exclude else []
@@ -18,8 +22,9 @@ class Logger:
         
         self.cols = cols
         self.name = name
+        self.mode = mode
 
-        self.stdout_on = stdout_on
+        self.stdout_flag = stdout_flag
         self.stdout_include = list(set(stdout_include)-set(stdout_exclude))
         self.stdout_min_width = stdout_min_width
         self.stdout_track_min = stdout_track_min
@@ -27,34 +32,42 @@ class Logger:
         self.stdout_track_max = stdout_track_max
         self.stdout_cur_max = {name:-INF for name in stdout_track_max}
         self.stdout_color_cycle = itertools.cycle(COLORS[:stdout_cycle_len])
+        self.stdout_init_flag = stdout_init_flag
+        self.stdout_init_before_log = stdout_init_before_log
+        self.stdout_separator_before_init = stdout_separator_before_init
+        self.stdout_separator_after_log = stdout_separator_after_log
         
-        self.csv_on = csv_on
+        self.csv_flag = csv_flag
         self.csv_path = os.path.abspath(name+".csv")
         self.csv_dir = os.path.dirname(self.csv_path)
         self.csv_delimiter = csv_delimiter
         
-        self.wandb_on = wandb_on
+        self.wandb_flag = wandb_flag
         self.wandb_dir = os.path.abspath(name+"_wandb")
         
 
-        if stdout_on: self.stdout_init()
+        if stdout_flag and stdout_init_flag: self.stdout_init()
         
-        if csv_on: self.csv_init()
+        if csv_flag: self.csv_init()
 
-        if wandb_on: self.wandb_init()
+        if wandb_flag: self.wandb_init()
         
     def log(self, *vals):
         if len(self.cols) != len(vals):
             raise ValueError(f"Logger has {len(self.cols)} columns, but {len(vals)} values were passed.")
 
-        if self.stdout_on: self.stdout_log(*vals)
+        if self.stdout_flag:
+            if self.stdout_init_before_log: self.stdout_init()
+            self.stdout_log(*vals)
         
-        if self.csv_on: self.csv_log(*vals)
+        if self.csv_flag: self.csv_log(*vals)
 
-        if self.wandb_on: self.wandb_log(*vals)
+        if self.wandb_flag: self.wandb_log(*vals)
 
 
     def stdout_init(self):
+        if self.stdout_separator_before_init: print(SEPARATOR)
+        
         styled_cols = []
         
         for col in self.cols:
@@ -114,13 +127,16 @@ class Logger:
             styled_vals.append(val)
         
         print(' '.join(styled_vals), flush=True)
+
+        if self.stdout_separator_after_log: print(SEPARATOR)
     
 
     def csv_init(self):
-        os.makedirs(self.csv_dir, exist_ok=True)
-        with open(self.csv_path, "w") as file:
-            writer = csv.writer(file, delimiter=self.csv_delimiter)
-            writer.writerow(self.cols)
+        if self.mode == "w" or (self.mode == "a" and not os.path.isfile(self.csv_path)):
+            os.makedirs(self.csv_dir, exist_ok=True)
+            with open(self.csv_path, "w") as file:
+                writer = csv.writer(file, delimiter=self.csv_delimiter)
+                writer.writerow(self.cols)
 
     def csv_log(self, *vals):
         with open(self.csv_path, "a") as file:
