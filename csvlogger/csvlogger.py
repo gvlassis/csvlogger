@@ -7,74 +7,100 @@ import itertools
 COLORS = [31,32,33,34,35,36] # 31: red, 32: green, 33: yellow, 34: blue, 35: magenta, 36: cyan
 
 class Logger:
-    def __init__(self, *names, path="log.csv", delimiter=",", include=None, exclude=None, min_width=10, track_min=None, track_max=None):
-        path = os.path.abspath(path)
-        include = include if include else names
-        exclude = exclude if exclude else []
-        track_min = track_min if track_min else []
-        track_max = track_max if track_max else []
+    def __init__(self, *cols, name="log", stdout_on=True, stdout_include=None, stdout_exclude=None, stdout_min_width=10, stdout_track_min=None, stdout_track_max=None, csv_on=True, csv_delimiter=",", wandb_on=False):
 
-        self.names = names
-        self.path = path
-        self.dir = os.path.dirname(path)
-        self.delimiter = delimiter
-        self.include = list(set(include)-set(exclude))
-        self.min_width = min_width
-        self.track_min = track_min
-        self.min = {name:INF for name in track_min}
-        self.track_max = track_max
-        self.max = {name:-INF for name in track_max}
-        cycle_len = min(len(COLORS), len(track_min)+len(track_max))
-        self.color_cycle = itertools.cycle(COLORS[:cycle_len])
+        stdout_include = stdout_include if stdout_include else cols
+        stdout_exclude = stdout_exclude if stdout_exclude else []
+        stdout_track_min = stdout_track_min if stdout_track_min else []
+        stdout_track_max = stdout_track_max if stdout_track_max else []
+        stdout_cycle_len = min(len(COLORS), len(stdout_track_min)+len(stdout_track_max))
         
-        included_names = []
-        for name in self.names:
-            if name not in self.include:
-                continue
-            
-            if name in self.track_min:
-                name = name + "(↓)"
-                color = next(self.color_cycle)
-                stylize = lambda name: f"\x1b[1;{color}m{name}\x1b[0m"
-            elif name in self.track_max:
-                name = name + "(↑)"
-                color = next(self.color_cycle)
-                stylize = lambda name: f"\x1b[1;{color}m{name}\x1b[0m"
-            else:
-                stylize = lambda name: f"\x1b[1m{name}\x1b[0m"
-            width = max(min_width, len(name))
-            name = name.rjust(width)
-            name = stylize(name)
-            included_names.append(name)
-        print(' '.join(included_names), flush=True)
         
-        os.makedirs(self.dir, exist_ok=True)
-        with open(path, "w") as file:
-            writer = csv.writer(file, delimiter=delimiter)
-            writer.writerow(names)
+        self.cols = cols
+        self.name = name
+
+        self.stdout_on = stdout_on
+        self.stdout_include = list(set(stdout_include)-set(stdout_exclude))
+        self.stdout_min_width = stdout_min_width
+        self.stdout_track_min = stdout_track_min
+        self.stdout_cur_min = {name:INF for name in stdout_track_min}
+        self.stdout_track_max = stdout_track_max
+        self.stdout_cur_max = {name:-INF for name in stdout_track_max}
+        self.stdout_color_cycle = itertools.cycle(COLORS[:stdout_cycle_len])
+        
+        self.csv_on = csv_on
+        self.csv_path = os.path.abspath(name+".csv")
+        self.csv_dir = os.path.dirname(self.csv_path)
+        self.csv_delimiter = csv_delimiter
+        
+        self.wandb_on = wandb_on
+        self.wandb_dir = os.path.abspath(name+"_wandb")
+        
+
+        if stdout_on: self.stdout_init()
+        
+        if csv_on: self.csv_init()
+
+        if wandb_on: self.wandb_init()
         
     def log(self, *vals):
-        included_vals = []
-        for name, val in zip(self.names, vals):
-            if name not in self.include:
+        if len(self.cols) != len(vals):
+            raise ValueError(f"Logger has {len(self.cols)} columns, but {len(vals)} values were passed.")
+
+        if self.stdout_on: self.stdout_log(*vals)
+        
+        if self.csv_on: self.csv_log(*vals)
+
+        if self.wandb_on: self.wandb_log(*vals)
+
+
+    def stdout_init(self):
+        styled_cols = []
+        
+        for col in self.cols:
+            if col not in self.stdout_include:
                 continue
             
-            if name in self.track_min:
-                color = next(self.color_cycle)
-                if val < self.min[name]:
-                    self.min[name] = val
+            if col in self.stdout_track_min:
+                col = col + "(↓)"
+                color = next(self.stdout_color_cycle)
+                stylize = lambda col: f"\x1b[1;{color}m{col}\x1b[0m"
+            elif col in self.stdout_track_max:
+                col = col + "(↑)"
+                color = next(self.stdout_color_cycle)
+                stylize = lambda col: f"\x1b[1;{color}m{col}\x1b[0m"
+            else:
+                stylize = lambda col: f"\x1b[1m{col}\x1b[0m"
+            width = max(self.stdout_min_width, len(col))
+            col = col.rjust(width)
+            col = stylize(col)
+            styled_cols.append(col)
+        
+        print(' '.join(styled_cols), flush=True)
+
+    def stdout_log(self, *vals):
+        styled_vals = []
+        
+        for col, val in zip(self.cols, vals):
+            if col not in self.stdout_include:
+                continue
+            
+            if col in self.stdout_track_min:
+                color = next(self.stdout_color_cycle)
+                if val < self.stdout_cur_min[col]:
+                    self.stdout_cur_min[col] = val
                     stylize = lambda val: f"\x1b[{color}m{val}\x1b[0m"
                 else:
                     stylize = lambda val: val
-                name = name + "(↓)"
-            elif name in self.track_max:
-                color = next(self.color_cycle)
-                if self.max[name] < val:
-                    self.max[name] = val
+                col = col + "(↓)"
+            elif col in self.stdout_track_max:
+                color = next(self.stdout_color_cycle)
+                if self.stdout_cur_max[col] < val:
+                    self.stdout_cur_max[col] = val
                     stylize = lambda val: f"\x1b[{color}m{val}\x1b[0m"
                 else:
                     stylize = lambda val: val
-                name = name + "(↑)"
+                col = col + "(↑)"
             else:
                 stylize = lambda val: val
 
@@ -82,12 +108,28 @@ class Logger:
                 val = f"{val:.3f}"
             else:
                 val = str(val)
-            width = max(self.min_width, len(name))
+            width = max(self.stdout_min_width, len(col))
             val = val.rjust(width)
             val = stylize(val)
-            included_vals.append(val)
-        print(' '.join(included_vals), flush=True)
+            styled_vals.append(val)
+        
+        print(' '.join(styled_vals), flush=True)
+    
 
-        with open(self.path, "a") as file:
-            writer = csv.writer(file, delimiter=self.delimiter)
+    def csv_init(self):
+        os.makedirs(self.csv_dir, exist_ok=True)
+        with open(self.csv_path, "w") as file:
+            writer = csv.writer(file, delimiter=self.csv_delimiter)
+            writer.writerow(self.cols)
+
+    def csv_log(self, *vals):
+        with open(self.csv_path, "a") as file:
+            writer = csv.writer(file, delimiter=self.csv_delimiter)
             writer.writerow(vals)
+    
+
+    def wandb_init(self):
+        return
+
+    def wandb_log(self, *vals):
+        return
