@@ -8,10 +8,10 @@ COLORS = [31,32,33,34,35,36] # 31: red, 32: green, 33: yellow, 34: blue, 35: mag
 SEPARATOR = "─"*30
 
 class Logger:
-    def __init__(self, *cols, name="log", mode="a",
+    def __init__(self, *cols, name="log", resume=True,
                  stdout_flag=True, stdout_include=None, stdout_exclude=None, stdout_min_width=10, stdout_track_min=None, stdout_track_max=None, stdout_init_flag=True, stdout_init_before_log=False, stdout_separator_before_init=False, stdout_separator_after_log=False,
                  csv_flag=True, csv_delimiter=",",
-                 wandb_flag=False):
+                 wandb_flag=False, wandb_kwargs=None):
 
         stdout_include = stdout_include if stdout_include else cols
         stdout_exclude = stdout_exclude if stdout_exclude else []
@@ -19,10 +19,14 @@ class Logger:
         stdout_track_max = stdout_track_max if stdout_track_max else []
         stdout_cycle_len = min(len(COLORS), len(stdout_track_min)+len(stdout_track_max))
         
+        wandb_kwargs = wandb_kwargs if wandb_kwargs else {}
+        wandb_kwargs["dir"] = os.path.abspath(name+"_wandb")
+        wandb_kwargs["resume"] = "allow" if resume else False
+        
         
         self.cols = cols
         self.name = name
-        self.mode = mode
+        self.resume = resume
 
         self.stdout_flag = stdout_flag
         self.stdout_include = list(set(stdout_include)-set(stdout_exclude))
@@ -43,14 +47,15 @@ class Logger:
         self.csv_delimiter = csv_delimiter
         
         self.wandb_flag = wandb_flag
-        self.wandb_dir = os.path.abspath(name+"_wandb")
+        self.wandb_kwargs = wandb_kwargs
         
 
         if stdout_flag and stdout_init_flag: self.stdout_init()
         
         if csv_flag: self.csv_init()
 
-        if wandb_flag: self.wandb_init()
+        if wandb_flag:
+            self.wandb_run = self.wandb_init()
         
     def log(self, *vals):
         if len(self.cols) != len(vals):
@@ -132,7 +137,7 @@ class Logger:
     
 
     def csv_init(self):
-        if self.mode == "w" or (self.mode == "a" and not os.path.isfile(self.csv_path)):
+        if not self.resume or (self.resume and not os.path.isfile(self.csv_path)):
             os.makedirs(self.csv_dir, exist_ok=True)
             with open(self.csv_path, "w") as file:
                 writer = csv.writer(file, delimiter=self.csv_delimiter)
@@ -145,7 +150,12 @@ class Logger:
     
 
     def wandb_init(self):
-        return
+        import wandb
 
+        run = wandb.init(**self.wandb_kwargs)
+
+        return run
+        
     def wandb_log(self, *vals):
-        return
+        data = dict(zip(self.cols, vals))
+        self.wandb_run.log(data)
