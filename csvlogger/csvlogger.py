@@ -20,7 +20,7 @@ class Logger:
         stdout_cycle_len = min(len(COLORS), len(stdout_track_min)+len(stdout_track_max))
         
         wandb_kwargs = wandb_kwargs if wandb_kwargs else {}
-        wandb_kwargs["dir"] = os.path.abspath(name+"_wandb")
+        wandb_kwargs["id"] = name
         wandb_kwargs["resume"] = "allow" if resume else False
         
         
