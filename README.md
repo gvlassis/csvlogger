@@ -15,7 +15,7 @@ pip install -U git+https://github.com/gvlassis/csvlogger
 ```python
 import csvlogger
 
-# Super simple logger, with two columns of data. The log is going to be: i) printed to the CLI, ii) saved in `./example.csv`, iii) synced to W&B.
+# Super simple logger, with two columns of data. The log is going to be: i) printed to the CLI, ii) saved in ./example.csv, iii) synced to W&B.
 logger1 = csvlogger.Logger("first_column", "second_column", name="example", stdout_flag=True, csv_flag=True, wandb_flag=False)
 
 # ML logger with four columns. The logger resumes from a saved state. All four columns will be logged, but "time" is excluded from printing. The minimum width of every cell in the terminal will be 20 characters. The current minimums of "train_loss" and "val_loss" will be colored. The W&B run id is "gold-magikarp".
