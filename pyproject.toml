@@ -1,7 +1,7 @@
 [project]
 name = "csvlogger"
 version = "0.0.1"
-description = "📝 Convenient CSV and terminal logger"
+description = "📝 Convenient CSV, terminal and W&B logger"
 
 [build-system]
 requires = ["setuptools"]
