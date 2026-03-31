@@ -9,7 +9,7 @@ SEPARATOR = "─"*30
 
 class Logger:
     def __init__(self, *cols, name="log", resume=True,
-                 stdout_flag=True, stdout_include=None, stdout_exclude=None, stdout_min_width=10, stdout_track_min=None, stdout_track_max=None, stdout_init_flag=True, stdout_init_before_log=False, stdout_separator_before_init=False, stdout_separator_after_log=False,
+                 stdout_flag=True, stdout_include=None, stdout_exclude=None, stdout_min_width=10, stdout_track_min=None, stdout_track_max=None, stdout_formatters=None, stdout_init_flag=True, stdout_init_before_log=False, stdout_separator_before_init=False, stdout_separator_after_log=False,
                  csv_flag=True, csv_delimiter=",",
                  wandb_flag=False, wandb_kwargs=None):
 
@@ -18,6 +18,7 @@ class Logger:
         stdout_track_min = stdout_track_min if stdout_track_min else []
         stdout_track_max = stdout_track_max if stdout_track_max else []
         stdout_cycle_len = min(len(COLORS), len(stdout_track_min)+len(stdout_track_max))
+        stdout_formatters = stdout_formatters if stdout_formatters else {}
         
         wandb_kwargs = wandb_kwargs if wandb_kwargs else {}
         wandb_kwargs["id"] = name
@@ -36,6 +37,7 @@ class Logger:
         self.stdout_track_max = stdout_track_max
         self.stdout_cur_max = {name:-INF for name in stdout_track_max}
         self.stdout_color_cycle = itertools.cycle(COLORS[:stdout_cycle_len])
+        self.stdout_formatters = stdout_formatters
         self.stdout_init_flag = stdout_init_flag
         self.stdout_init_before_log = stdout_init_before_log
         self.stdout_separator_before_init = stdout_separator_before_init
@@ -79,16 +81,21 @@ class Logger:
             if col not in self.stdout_include:
                 continue
             
+            if col in self.stdout_formatters:
+                prefix = "1;3" # Bold+italics
+            else:
+                prefix = "1" # Bold
+            
             if col in self.stdout_track_min:
                 col = col + "(↓)"
                 color = next(self.stdout_color_cycle)
-                stylize = lambda col: f"\x1b[1;{color}m{col}\x1b[0m"
+                stylize = lambda col: f"\x1b[{prefix};{color}m{col}\x1b[0m"
             elif col in self.stdout_track_max:
                 col = col + "(↑)"
                 color = next(self.stdout_color_cycle)
-                stylize = lambda col: f"\x1b[1;{color}m{col}\x1b[0m"
+                stylize = lambda col: f"\x1b[{prefix};{color}m{col}\x1b[0m"
             else:
-                stylize = lambda col: f"\x1b[1m{col}\x1b[0m"
+                stylize = lambda col: f"\x1b[{prefix}m{col}\x1b[0m"
             width = max(self.stdout_min_width, len(col))
             col = col.rjust(width)
             col = stylize(col)
@@ -110,7 +117,7 @@ class Logger:
                     stylize = lambda val: f"\x1b[{color}m{val}\x1b[0m"
                 else:
                     stylize = lambda val: val
-                col = col + "(↓)"
+                styled_col = col + "(↓)"
             elif col in self.stdout_track_max:
                 color = next(self.stdout_color_cycle)
                 if self.stdout_cur_max[col] < val:
@@ -118,18 +125,21 @@ class Logger:
                     stylize = lambda val: f"\x1b[{color}m{val}\x1b[0m"
                 else:
                     stylize = lambda val: val
-                col = col + "(↑)"
+                styled_col = col + "(↑)"
             else:
                 stylize = lambda val: val
+                styled_col = col
+            
+            styled_val = self.stdout_formatters[col](val) if col in self.stdout_formatters else val
 
-            if isinstance(val, float):
-                val = f"{val:.3f}"
+            if isinstance(styled_val, float):
+                styled_val = f"{styled_val:.3f}"
             else:
-                val = str(val)
-            width = max(self.stdout_min_width, len(col))
-            val = val.rjust(width)
-            val = stylize(val)
-            styled_vals.append(val)
+                styled_val = str(styled_val)
+            width = max(self.stdout_min_width, len(styled_col))
+            styled_val = styled_val.rjust(width)
+            styled_val = stylize(styled_val)
+            styled_vals.append(styled_val)
         
         print(' '.join(styled_vals), flush=True)
 

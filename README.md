@@ -3,6 +3,9 @@
 ## Description
 CSVLogger is a convenient Python logger. It simultaneously logs data to the terminal, a CSV file and to W&B (to be expanded in the future). It was made with Machine Learning in mind.
 
+> [!TIP]
+> Try it with [seconds_formatter](https://github.com/gvlassis/seconds_formatter)!
+
 ## Getting Started
 1) Install/update(-U) csvlogger from GitHub
 
@@ -23,6 +26,10 @@ logger2 = csvlogger.Logger("epoch", "train_loss", "val_loss", "time", name="ml",
                            stdout_flag=True, stdout_exclude=["time"], stdout_min_width=20, stdout_track_min=["train_loss", "val_loss"],
                            csv_flag=True, csv_delimiter=" ",
                            wandb_flag=True, wandb_kwargs={"id":"gold-magikarp"})
+
+# Time tracker with custom formatter. The header is not printed at initialization, but it is printed at every .log() call, along with a line separator.
+import seconds_formatter # https://github.com/gvlassis/seconds_formatter
+logger3 = csvlogger.Logger("time", stdout_track_max=["time"], stdout_formatters={"time": seconds_formatter.adaptive}, stdout_init_flag=False, stdout_init_before_log=True, stdout_separator_after_log=True)
 ```
 
 3) Use the Logger(s) to log data
@@ -33,4 +40,7 @@ logger1.log(10,20) # Both logged ./example.csv, both printed
 
 logger2.log(1, 9.8, 9.7, 3) # All logged in ./ml.csv and ./ml_wandb (id=gold-magikarp), but 3 is not printed. 9.8 and 9.7 will be colored.
 logger2.log(2, 9.5, 9.9, 4) # All logged in ./ml.csv and ./ml_wandb (id=gold-magikarp), but 4 is not printed. 9.5 will be colored.
+
+logger3.log(7201) # Colored 2h printed, along with header
+logger3.log(3720) # Uncolored 1h2m printed, along with header
 ```
