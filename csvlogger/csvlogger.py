@@ -12,8 +12,10 @@ def _clean_name(name: str):
     return name.replace(" ", "_").replace("/", "_")
 
 class Logger:
-    def __init__(self, *cols, name="log", resume=True,
-                 stdout_flag=True, stdout_include=None, stdout_exclude=None, stdout_min_width=10, stdout_track_min=None, stdout_track_max=None, stdout_formatters=None, stdout_init_flag=True, stdout_init_before_log=False, stdout_separator_before_init=False, stdout_separator_after_log=False,
+    def __init__(self, *cols, name="log", log_dir: str = None, resume=True,
+                 stdout_flag=True, stdout_include=None, stdout_exclude=None, stdout_min_width=10, stdout_track_min=None,
+                 stdout_track_max=None, stdout_formatters=None, stdout_init_flag=True, stdout_init_before_log=False,
+                 stdout_separator_before_init=False, stdout_separator_after_log=False,
                  csv_flag=True, csv_delimiter=",",
                  wandb_flag=False, wandb_kwargs=None):
 
@@ -52,7 +54,10 @@ class Logger:
         self.stdout_separator_after_log = stdout_separator_after_log
         
         self.csv_flag = csv_flag
-        self.csv_path = os.path.abspath(name+".csv")
+        if log_dir:
+            self.csv_path = os.path.abspath(os.path.join(log_dir, name + ".csv"))
+        else:
+            self.csv_path = os.path.abspath(name + ".csv")
         self.csv_dir = os.path.dirname(self.csv_path)
         self.csv_delimiter = csv_delimiter
         
